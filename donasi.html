@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heaven Payment</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Background Video */
+        .video-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        }
+
+        /* Efek Blur ala Glassmorphism */
+        .glass-box {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Efek Fade-in QRIS */
+        .fade-in {
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        .fade-in.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="text-gray-300 bg-gray-900">
+
+    <!-- Background Video -->
+    <video class="video-bg" autoplay loop muted onerror="this.style.display='none'; document.body.style.backgroundImage='url(https://source.unsplash.com/random/1920x1080/?space)';">
+        <source src="https://files.catbox.moe/kp2qqw.mp4" type="video/mp4">
+        Browser Anda tidak mendukung video.
+    </video>
+
+    <!-- Header -->
+    <header class="text-white text-center py-6">
+        <h1 class="text-4xl font-bold text-blue-400 drop-shadow-lg">Heaven Payment</h1>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex items-center justify-center min-h-screen px-4">
+        <section class="glass-box w-full max-w-md p-6 mt-[-80px]">
+            <h2 class="text-2xl font-semibold text-blue-400 text-center mb-4">Form Payment</h2>
+
+            <!-- Input Nominal -->
+            <label for="nominal" class="block text-blue-300 font-medium mb-2">Nominal Payment:</label>
+            <input type="number" id="nominal" class="w-full p-3 bg-gray-800 border border-gray-600 rounded focus:ring-2 focus:ring-blue-400 focus:outline-none text-white" placeholder="Masukkan nominal" min="1000">
+
+            <!-- Tombol Buat QRIS -->
+            <button id="generateQRIS" class="bg-gray-600 text-white px-4 py-2 rounded w-full mt-4 cursor-not-allowed transition-all duration-300 ease-in-out" disabled>
+                Buat QRIS
+            </button>
+
+            <!-- Loading -->
+            <div id="loading" class="text-center mt-3 hidden">
+                <p class="text-yellow-400">Membuat QRIS...</p>
+            </div>
+
+            <!-- Tempat QRIS -->
+            <div id="qrisContainer" class="mt-4 text-center fade-in">
+                <img id="qrisImage" src="" alt="QRIS" class="mx-auto w-48 h-48 hidden">
+                <div id="countdown" class="mt-2 text-green-400 font-bold hidden"></div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        let countdownTimer; // Variabel global buat countdown
+
+        // Validasi Nominal & Tombol QRIS
+        document.getElementById("nominal").addEventListener("input", function () {
+            const nominal = this.value;
+            const btnQRIS = document.getElementById("generateQRIS");
+
+            if (nominal >= 1000) {
+                btnQRIS.classList.remove("bg-gray-600", "cursor-not-allowed");
+                btnQRIS.classList.add("bg-blue-500", "hover:bg-blue-600");
+                btnQRIS.disabled = false;
+            } else {
+                btnQRIS.classList.remove("bg-blue-500", "hover:bg-blue-600");
+                btnQRIS.classList.add("bg-gray-600", "cursor-not-allowed");
+                btnQRIS.disabled = true;
+            }
+        });
+
+        // Fungsi Fetch API QRIS
+        async function generateQRIS() {
+            const nominal = document.getElementById("nominal").value;
+            const qrisContainer = document.getElementById("qrisContainer");
+            const qrisImage = document.getElementById("qrisImage");
+            const countdown = document.getElementById("countdown");
+            const loading = document.getElementById("loading");
+
+            if (nominal < 1000) return;
+
+            // Reset Timer kalau ada countdown yang jalan sebelumnya
+            clearInterval(countdownTimer);
+
+            // Tampilkan loading
+            loading.classList.remove("hidden");
+
+            try {
+                const response = await fetch(`https://rafaelxd.tech/api/orkut/createpayment?amount=${nominal}&codeqr=00020101021126670016COM.NOBUBANK.WWW01189360050300000879140214616028973364110303UMI51440014ID.CO.QRIS.WWW0215ID20232690044950303UMI5204481253033605802ID5921KENZZ STORE OK11950266007JOMBANG61056141162070703A01630496DF`);
+                const data = await response.json();
+
+                if (data.status) {
+                    // QRIS Berhasil dibuat
+                    qrisImage.src = data.result.qrImageUrl;
+                    qrisContainer.classList.add("show");
+                    qrisImage.classList.remove("hidden");
+                    countdown.classList.remove("hidden");
+
+                    // Mulai Countdown 5 Menit
+                    startCountdown(5 * 60, countdown, qrisImage);
+                } else {
+                    alert("Gagal membuat QRIS, coba lagi.");
+                }
+            } catch (error) {
+                console.error("Error fetching QRIS:", error);
+                alert("Terjadi kesalahan saat membuat QRIS.");
+            } finally {
+                // Sembunyikan loading
+                loading.classList.add("hidden");
+            }
+        }
+
+        // Fungsi Countdown
+        function startCountdown(duration, countdownElement, qrisImage) {
+            let timeLeft = duration;
+
+            function updateCountdown() {
+                let minutes = Math.floor(timeLeft / 60);
+                let seconds = timeLeft % 60;
+                countdownElement.innerHTML = `Sisa waktu: <span class="text-red-400">${minutes}:${seconds < 10 ? '0' : ''}${seconds}</span>`;
+
+                if (timeLeft <= 0) {
+                    clearInterval(countdownTimer);
+                    qrisImage.classList.add("hidden"); // Sembunyikan QRIS
+                    countdownElement.innerHTML = '<span class="text-red-500 font-bold">Yah, waktunya sudah habis :(</span>';
+                } else {
+                    timeLeft--;
+                }
+            }
+
+            updateCountdown(); // Jalankan sekali langsung
+            countdownTimer = setInterval(updateCountdown, 1000); // Perbarui setiap detik
+        }
+
+        // Event Listener buat QRIS
+        document.getElementById("generateQRIS").addEventListener("click", generateQRIS);
+    </script>
+
+</body>
+</html>
